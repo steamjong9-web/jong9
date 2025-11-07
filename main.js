@@ -3,11 +3,13 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
+app.get('/', (req, res) => res.send('OK'));
+
 app.post('/skill', async (req, res) => {
-  const date = req.body.action?.params?.date || '20251111'; // 예시 날짜
-  const ATPT_OFCDC_SC_CODE = 'S10'; // 경남교육청
-  const SD_SCHUL_CODE = '9091064';  // 구산중학교
-  const NEIS_KEY = 'e318646576d84d90b4d146e47a11d1b7';
+  const date = req.body.action?.params?.date || '20251111';
+  const ATPT_OFCDC_SC_CODE = 'S10';
+  const SD_SCHUL_CODE = '9091064';
+  const NEIS_KEY = process.env.NEIS_KEY;
 
   try {
     const result = await axios.get('https://open.neis.go.kr/hub/mealServiceDietInfo', {
@@ -27,7 +29,7 @@ app.post('/skill', async (req, res) => {
         outputs: [{ simpleText: { text: info || '급식 정보가 없습니다.' } }]
       }
     });
-  } catch {
+  } catch (e) {
     res.json({
       version: "2.0",
       template: {
@@ -37,5 +39,5 @@ app.post('/skill', async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log('Server started'));
-
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log('Server started on', PORT));
