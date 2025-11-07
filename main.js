@@ -3,7 +3,7 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
-// 날짜 계산 함수
+// 날짜 계산 함수: 오늘/내일/어제/특정일 다 지원
 function getYmd(offset = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offset);
@@ -15,8 +15,8 @@ function getYmd(offset = 0) {
 
 app.get('/', (req, res) => res.send('OK'));
 
+// 급식 스킬 엔드포인트
 app.post('/skill', async (req, res) => {
-  // 오픈빌더에서 들어오는 발화 파라미터 처리
   let date;
   const userInput = req.body.action?.params?.date;
 
@@ -24,16 +24,18 @@ app.post('/skill', async (req, res) => {
     date = getYmd(0);
   } else if (userInput === '내일') {
     date = getYmd(1);
+  } else if (userInput === '어제') {
+    date = getYmd(-1);
   } else if (/^\d{8}$/.test(userInput)) {
-    // 'YYYYMMDD' 형식이면 그대로 사용
+    // YYYYMMDD 형식일 때
     date = userInput;
   } else {
-    // 기타는 오늘 날짜로 처리
     date = getYmd(0);
   }
 
-  const ATPT_OFCDC_SC_CODE = 'S10';    // 시도교육청코드
-  const SD_SCHUL_CODE = '9091064';     // 표준학교코드
+  // 학교 코드/교육청 코드/환경변수 API키!
+  const ATPT_OFCDC_SC_CODE = 'S10';    // 경상남도교육청
+  const SD_SCHUL_CODE = '9091064';     // 구산중학교(예시, 실제 코드를 맞게 사용)
   const NEIS_KEY = process.env.NEIS_KEY;
 
   try {
@@ -64,6 +66,6 @@ app.post('/skill', async (req, res) => {
   }
 });
 
-// Render나 Cloudtype에서는 반드시 아래 형태!
+// Render/Cloudtype 환경에서는 반드시 아래처럼!
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('Server started on', PORT));
