@@ -1,0 +1,13 @@
+{
+  "name": "school-meal-bot",
+  "version": "1.0.0",
+  "description": "구산중 급식 챗봇 서버",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.1"
+  }
+}
