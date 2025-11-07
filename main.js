@@ -13,6 +13,7 @@ function getYmd(offset = 0) {
   return `${yyyy}${mm}${dd}`;
 }
 
+
 app.get('/', (req, res) => res.send('OK'));
 
 // 급식 스킬 엔드포인트
@@ -69,3 +70,4 @@ app.post('/skill', async (req, res) => {
 // Render/Cloudtype 환경에서는 반드시 아래처럼!
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('Server started on', PORT));
+
