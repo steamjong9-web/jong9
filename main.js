@@ -7,7 +7,7 @@ app.post('/skill', async (req, res) => {
   const date = req.body.action?.params?.date || '20251111'; // 예시 날짜
   const ATPT_OFCDC_SC_CODE = 'S10'; // 경남교육청
   const SD_SCHUL_CODE = '9091064';  // 구산중학교
-  const NEIS_KEY = '여기에_본인_NEIS_API_KEY_입력';
+  const NEIS_KEY = 'e318646576d84d90b4d146e47a11d1b7';
 
   try {
     const result = await axios.get('https://open.neis.go.kr/hub/mealServiceDietInfo', {
@@ -38,3 +38,4 @@ app.post('/skill', async (req, res) => {
 });
 
 app.listen(3000, () => console.log('Server started'));
+
