@@ -3,7 +3,6 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
-// 날짜 계산 함수
 function getYmd(offset = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offset);
@@ -36,7 +35,7 @@ async function getEventInfoFromApi(keyword, NEIS_KEY, ATPT_OFCDC_SC_CODE, SD_SCH
     if (matched.length > 0) {
       return matched.map(e => `${e.EVENT_NM} : ${e.EVENT_STRTDATE}`).join('\n');
     }
-    return `${keyword} 관련된 행사가 없습니다.`;
+    return `${keyword} 관련 학사일정이 없습니다.`;
   } catch (e) {
     return '학사일정 정보를 불러오는 중 오류가 발생했습니다.';
   }
@@ -51,11 +50,11 @@ app.post('/skill', async (req, res) => {
   else if (/^\d{8}$/.test(dateParam)) date = dateParam;
   else date = getYmd(0);
 
-  const eventKeyword = req.body.action?.params?.eventKeyword || '';  // 행사명 키워드
+  const eventKeyword = req.body.action?.params?.행사명 || ''; // 오픈빌더에서 행사명 엔티티로 전달
 
   const NEIS_KEY = process.env.NEIS_KEY;
-  const ATPT_OFCDC_SC_CODE = 'S10';
-  const SD_SCHUL_CODE = '9091064';
+  const ATPT_OFCDC_SC_CODE = 'S10'; // 예: 경남교육청
+  const SD_SCHUL_CODE = '9091064';  // 예: 구산중학교
 
   try {
     // 급식정보 호출
@@ -73,13 +72,12 @@ app.post('/skill', async (req, res) => {
       ? mealRows.map(r => `${r.MMEAL_SC_NM}: ${r.DDISH_NM.replace(/<br\/>/g, '\n')}`).join('\n\n')
       : '급식 정보가 없습니다.';
 
-    // 행사정보 호출 (키워드가 있으면)
+    // 행사명 있을 때 학사일정 안내
     let eventInfo = '';
     if (eventKeyword.trim() !== '') {
       eventInfo = await getEventInfoFromApi(eventKeyword, NEIS_KEY, ATPT_OFCDC_SC_CODE, SD_SCHUL_CODE);
     }
 
-    // 최종 응답 구성
     let responseText = mealInfo;
     if (eventInfo) {
       responseText += `\n\n[행사 안내]\n${eventInfo}`;
