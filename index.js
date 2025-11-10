@@ -25,7 +25,7 @@ app.post('/meal', async (req, res) => {
 
   const NEIS_KEY = process.env.NEIS_KEY;
   const EDU = 'S10';
-  const SCHOOL = '7531064';
+  const SCHOOL = '9091064';
 
   try {
     const r = await axios.get('https://open.neis.go.kr/hub/mealServiceDietInfo', {
@@ -76,5 +76,6 @@ app.post('/event', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('서버 시작:', PORT));
+
 
 
