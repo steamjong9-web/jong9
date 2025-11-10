@@ -4,7 +4,6 @@ const app = express();
 
 app.use(express.json());
 
-// 날짜 포맷팅 함수 (YYYYMMDD)
 function getYmd(offset = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offset);
@@ -14,98 +13,112 @@ function getYmd(offset = 0) {
   return `${yyyy}${mm}${dd}`;
 }
 
-// 기본 라우트
+// 캐시 (메모리 저장소)
+let mealCache = {};
+let eventCache = {};
+
+// NEIS API에서 데이터 가져오기 (백그라운드)
+async function fetchMealData(ymd) {
+  try {
+    const response = await axios.get('https://open.neis.go.kr/hub/mealServiceDietInfo', {
+      params: {
+        KEY: 'e318646576d84d90b4d146e47a11d1b7',
+        Type: 'json',
+        ATPT_OFCDC_SC_CODE: 'S10',
+        SD_SCHUL_CODE: '9091064',
+        MLSV_YMD: ymd
+      },
+      timeout: 5000
+    });
+
+    const meals = response.data?.mealServiceDietInfo?.[1]?.row || [];
+    mealCache[ymd] = meals;
+    return meals;
+  } catch (error) {
+    console.error('NEIS 급식 오류:', error.message);
+    return [];
+  }
+}
+
+async function fetchEventData(from, to) {
+  try {
+    const response = await axios.get('https://open.neis.go.kr/hub/SchoolSchedule', {
+      params: {
+        KEY: 'e318646576d84d90b4d146e47a11d1b7',
+        Type: 'json',
+        ATPT_OFCDC_SC_CODE: 'S10',
+        SD_SCHUL_CODE: '9091064',
+        AA_FROM_YMD: from,
+        AA_TO_YMD: to
+      },
+      timeout: 5000
+    });
+
+    const events = response.data?.SchoolSchedule?.[1]?.row || [];
+    const cacheKey = `${from}_${to}`;
+    eventCache[cacheKey] = events;
+    return events;
+  } catch (error) {
+    console.error('NEIS 일정 오류:', error.message);
+    return [];
+  }
+}
+
 app.get('/', (req, res) => {
-  res.send('구산중 챗봇 서버 정상 작동 중');
+  res.send('구산중 챗봇 정상 작동');
 });
 
-// 급식 정보 조회
-app.post('/meal', async (req, res) => {
+// 급식 조회 - 캐시 사용
+app.post('/meal', (req, res) => {
   try {
-    console.log('급식 요청 들어옴:', req.body);
-    
-    // 파라미터 추출
     const params = req.body.action?.params || {};
     const dateParam = params.date || '오늘';
-    
+
     let ymd;
     if (dateParam === '내일') ymd = getYmd(1);
     else if (dateParam === '어제') ymd = getYmd(-1);
     else ymd = getYmd(0);
+
+    // 캐시가 있으면 즉시 반환
+    let meals = mealCache[ymd] || [];
     
-    console.log('조회 날짜:', ymd);
-
-    const NEIS_KEY = 'e318646576d84d90b4d146e47a11d1b7';
-    const EDU = 'S10';
-    const SCHOOL = '9091064';
-
-    // NEIS API 호출
-    const response = await axios.get('https://open.neis.go.kr/hub/mealServiceDietInfo', {
-      params: {
-        KEY: NEIS_KEY,
-        Type: 'json',
-        ATPT_OFCDC_SC_CODE: EDU,
-        SD_SCHUL_CODE: SCHOOL,
-        MLSV_YMD: ymd
-      },
-      timeout: 4000
-    });
-
-    console.log('NEIS 응답:', JSON.stringify(response.data).substring(0, 200));
-
-    // 데이터 파싱
-    const mealData = response.data?.mealServiceDietInfo;
     let text = '급식 정보가 없습니다.';
-
-    if (mealData && mealData[1] && Array.isArray(mealData[1].row)) {
-      const meals = mealData[1].row;
-      const mealText = meals
-        .map(meal => {
-          const mealType = meal.MMEAL_SC_NM || '식사';
-          const dishes = meal.DDISH_NM ? meal.DDISH_NM.replace(/<br\/>/g, '\n') : '없음';
-          return `【${mealType}】\n${dishes}`;
-        })
+    if (meals.length > 0) {
+      text = meals
+        .map(m => `【${m.MMEAL_SC_NM}】\n${m.DDISH_NM.replace(/<br\/>/g, '\n')}`)
         .join('\n\n');
-      
-      text = mealText || '급식 정보가 없습니다.';
     }
 
-    // 카카오 봇 응답 형식
     res.json({
       version: '2.0',
       template: {
-        outputs: [
-          {
-            simpleText: {
-              text: text
-            }
-          }
-        ]
+        outputs: [{
+          simpleText: { text }
+        }]
       }
     });
 
+    // 백그라운드에서 최신 데이터 갱신
+    if (!mealCache[ymd]) {
+      fetchMealData(ymd);
+    }
+
   } catch (error) {
-    console.error('급식 조회 오류:', error.message);
+    console.error('오류:', error.message);
     res.json({
       version: '2.0',
       template: {
-        outputs: [
-          {
-            simpleText: {
-              text: '급식 정보를 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.'
-            }
-          }
-        ]
+        outputs: [{
+          simpleText: { text: '요청 처리 중 오류가 발생했습니다.' }
+        }]
       }
     });
   }
 });
 
-// 학사일정 조회
-app.post('/event', async (req, res) => {
+// 학사일정 조회 - 캐시 사용
+app.post('/event', (req, res) => {
   try {
-    console.log('일정 요청 들어옴:', req.body);
-
     const params = req.body.action?.params || {};
     const eventKeyword = params.eventKeyword || params.행사명 || '';
 
@@ -113,95 +126,55 @@ app.post('/event', async (req, res) => {
       res.json({
         version: '2.0',
         template: {
-          outputs: [
-            {
-              simpleText: {
-                text: '행사명을 말씀해주세요.\n예) 졸업식, 체육대회, 입학식, 수학여행'
-              }
-            }
-          ]
+          outputs: [{
+            simpleText: { text: '행사명을 알려주세요.\n예) 졸업식, 체육대회' }
+          }]
         }
       });
       return;
     }
 
-    const NEIS_KEY = 'e318646576d84d90b4d146e47a11d1b7';
-    const EDU = 'S10';
-    const SCHOOL = '9091064';
-
-    // 날짜 범위 설정 (오늘부터 약 8개월)
     const from = getYmd(0);
     const to = getYmd(240);
+    const cacheKey = `${from}_${to}`;
 
-    console.log('일정 조회 범위:', from, '-', to);
+    // 캐시 확인
+    let events = eventCache[cacheKey] || [];
+    let matched = events.filter(e => 
+      (e.EVENT_NM || '').toLowerCase().includes(eventKeyword.toLowerCase())
+    );
 
-    // NEIS API 호출
-    const response = await axios.get('https://open.neis.go.kr/hub/SchoolSchedule', {
-      params: {
-        KEY: NEIS_KEY,
-        Type: 'json',
-        ATPT_OFCDC_SC_CODE: EDU,
-        SD_SCHUL_CODE: SCHOOL,
-        AA_FROM_YMD: from,
-        AA_TO_YMD: to
-      },
-      timeout: 4000
-    });
-
-    console.log('학사일정 응답:', JSON.stringify(response.data).substring(0, 200));
-
-    // 데이터 파싱
-    const scheduleData = response.data?.SchoolSchedule;
-    let text = `'${eventKeyword}' 관련 학사일정이 없습니다.`;
-
-    if (scheduleData && scheduleData[1] && Array.isArray(scheduleData[1].row)) {
-      const events = scheduleData[1].row;
-      const matched = events.filter(e => 
-        (e.EVENT_NM || '').toLowerCase().includes(eventKeyword.toLowerCase())
-      );
-
-      if (matched.length > 0) {
-        const eventText = matched
-          .map(e => `${e.EVENT_NM}: ${e.EVENT_STRTDATE}`)
-          .join('\n');
-        text = eventText;
-      }
+    let text = `'${eventKeyword}' 관련 일정이 없습니다.`;
+    if (matched.length > 0) {
+      text = matched.map(e => `${e.EVENT_NM}: ${e.EVENT_STRTDATE}`).join('\n');
     }
 
-    // 카카오 봇 응답 형식
     res.json({
       version: '2.0',
       template: {
-        outputs: [
-          {
-            simpleText: {
-              text: text
-            }
-          }
-        ]
+        outputs: [{
+          simpleText: { text }
+        }]
       }
     });
 
+    // 백그라운드에서 최신 데이터 갱신
+    if (!eventCache[cacheKey]) {
+      fetchEventData(from, to);
+    }
+
   } catch (error) {
-    console.error('학사일정 조회 오류:', error.message);
+    console.error('오류:', error.message);
     res.json({
       version: '2.0',
       template: {
-        outputs: [
-          {
-            simpleText: {
-              text: '학사일정을 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.'
-            }
-          }
-        ]
+        outputs: [{
+          simpleText: { text: '요청 처리 중 오류가 발생했습니다.' }
+        }]
       }
     });
   }
 });
 
-// 서버 시작
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`서버 시작: 포트 ${PORT}`);
-  console.log(`로컬 주소: http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`포트 ${PORT}에서 서버 실행 중`));
