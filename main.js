@@ -29,7 +29,8 @@ app.post('/meal', async (req, res) => {
 
   try {
     const r = await axios.get('https://open.neis.go.kr/hub/mealServiceDietInfo', {
-      params: { KEY: NEIS_KEY, Type: 'json', ATPT_OFCDC_SC_CODE: EDU, SD_SCHUL_CODE: SCHOOL, MLSV_YMD: ymd }
+      params: { KEY: NEIS_KEY, Type: 'json', ATPT_OFCDC_SC_CODE: EDU, SD_SCHUL_CODE: SCHOOL, MLSV_YMD: ymd },
+      timeout: 3000
     });
     const rows = r.data.mealServiceDietInfo?.[1]?.row || [];
     const text = rows.length > 0
@@ -37,11 +38,11 @@ app.post('/meal', async (req, res) => {
       : '급식 정보가 없습니다.';
     
     res.json({ version: "2.0", template: { outputs: [{ simpleText: { text } }] } });
-  } catch {
+  } catch (error) {
+    console.error('급식 조회 오류:', error.message);
     res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: '급식 정보를 불러올 수 없습니다.' } }] } });
   }
 });
-
 app.post('/event', async (req, res) => {
   const params = req.body.action?.params || {};
   const eventKeyword = params.eventKeyword || params.행사명 || '';
@@ -53,7 +54,7 @@ app.post('/event', async (req, res) => {
 
   const NEIS_KEY = process.env.NEIS_KEY;
   const EDU = 'S10';
-  const SCHOOL = '7531064';
+  const SCHOOL = '9091064';
 
   try {
     const from = getYmd(0);
@@ -76,6 +77,7 @@ app.post('/event', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('서버 시작:', PORT));
+
 
 
 
