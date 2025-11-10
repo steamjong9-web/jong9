@@ -14,7 +14,6 @@ function getYmd(offset = 0) {
 
 app.get('/', (req, res) => res.send('구산중 챗봇 서버 정상 작동 중'));
 
-// 급식 전용 엔드포인트
 app.post('/meal', async (req, res) => {
   const params = req.body.action?.params || {};
   const dateParam = params.date || '오늘';
@@ -39,17 +38,16 @@ app.post('/meal', async (req, res) => {
     
     res.json({ version: "2.0", template: { outputs: [{ simpleText: { text } }] } });
   } catch {
-    res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: '급식 정보 오류' } }] } });
+    res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: '급식 정보를 불러올 수 없습니다.' } }] } });
   }
 });
 
-// 행사 전용 엔드포인트
 app.post('/event', async (req, res) => {
   const params = req.body.action?.params || {};
   const eventKeyword = params.eventKeyword || params.행사명 || '';
 
   if (!eventKeyword) {
-    res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: '행사명을 알려주세요. 예) 졸업식, 체육대회' } }] } });
+    res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: '행사명을 알려주세요. 예) 졸업식, 체육대회, 입학식' } }] } });
     return;
   }
 
@@ -72,10 +70,11 @@ app.post('/event', async (req, res) => {
     
     res.json({ version: "2.0", template: { outputs: [{ simpleText: { text } }] } });
   } catch {
-    res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: '학사일정 정보 오류' } }] } });
+    res.json({ version: "2.0", template: { outputs: [{ simpleText: { text: '학사일정을 불러올 수 없습니다.' } }] } });
   }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log('서버 시작:', PORT));
+
 
