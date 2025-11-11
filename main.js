@@ -3,39 +3,15 @@ const app = express();
 
 app.use(express.json());
 
-// 날짜 유틸리티
-function getYmd(offset = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + offset);
-  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function formatDate(ymd) {
-  const year = parseInt(ymd.substring(0, 4));
-  const month = ymd.substring(4, 6);
-  const day = ymd.substring(6, 8);
-  const date = new Date(year, parseInt(month) - 1, parseInt(day));
-  const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
-  const dayName = dayOfWeek[date.getDay()];
-  return `${month}월 ${day}일 (${dayName})`;
-}
-
-function getYmdWithDay(offset = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + offset);
-  const ymd = getYmd(offset);
-  const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
-  return { ymd, dayName: dayOfWeek[d.getDay()] };
-}
-
-// 2025년 11월 급식표 (완전한 데이터)
+// 급식 데이터 (2025년 11월, 날짜별 모두 포함)
 const mealSchedule = {
-  '20251103': { breakfast: '찹쌀팥밥, 한우미역국(5.6.9.16.18), 고추장돼지불고기(5.6.10.13), 한식잡채(1.5.6.10.13), 삼색나물(자율)(5), 배추김치(자율)(9)', lunch: '찹쌀증편', dinner: '' },
-  '20251104': { breakfast: '찰현미밥, 쇠고기무국(5.6.9.16.18), 큐브안심스테이크(2.5.6.10.12.13.15.16), 오이양파무침(13), 배추김치(자율)(9), 봄동시저샐러드(자율)(1.2.5.6.10.12)', lunch: '귤', dinner: '' },
-  '20251105': { breakfast: '찹쌀밥, 국밥(돼지/순대)(2.5.6.9.10.13.16), 오징어김치전(1.5.6.9.17), 부추양파겉절이(5.6.13.17), 섞박지(9), 달달식혜', lunch: '모듬야채스틱/쌈장(5.6.13)', dinner: '' },
-  '20251106': { breakfast: '찰흑미밥, 동태탕(5.9), 돼지갈비찜(5.6.10.13.18), 야채달걀찜(1.2.9), 동초겉절이(자율)(13), 배추김치(자율)(9), 사과', lunch: '', dinner: '' },
-  '20251110': { breakfast: '김치볶음밥(1.2.5.6.9.10.13.15.16.18), 유부팽이장국(5.6.9), 파인치즈타워함박(1.2.5.6.10.12.13.15.16), 동초겉절이(자율)(13), 깍두기(9), 저당요구르트(2)', lunch: '', dinner: '' },
-  '20251111': { breakfast: '현미수수밥, 롱초코도넛(1.2.5.6), 된장찌개(5.6.9), 훈제오리냉채무침(5.6.10.12.13.15.16), 마파두부덮밥', lunch: '', dinner: '' },
+  '20251103': { breakfast: '찹쌀팥밥, 한우미역국, 고추장돼지불고기, 한식잡채, 삼색나물, 배추김치', lunch: '찹쌀증편', dinner: '' },
+  '20251104': { breakfast: '찰현미밥, 쇠고기무국, 큐브안심스테이크, 오이양파무침, 배추김치, 봄동시저샐러드, 귤', lunch: '', dinner: '' },
+  '20251105': { breakfast: '찹쌀밥, 국밥(돼지/순대), 오징어김치전, 부추양파겉절이, 섞박지, 달달식혜', lunch: '모듬야채스틱/쌈장', dinner: '' },
+  '20251106': { breakfast: '찰흑미밥, 동태탕, 돼지갈비찜, 야채달걀찜, 동초겉절이, 배추김치, 사과', lunch: '', dinner: '' },
+  '20251107': { breakfast: '혼합잡곡밥, 부대찌개/라면사리, 닭윙데리야끼조림, 알감자연근조림, 콩나물파채무침, 배추김치, 미니츄로스', lunch: '', dinner: '' },
+  '20251110': { breakfast: '김치볶음밥, 유부팽이장국, 파인치즈타워함박, 동초겉절이, 깍두기, 저당요구르트', lunch: '', dinner: '' },
+  '20251111': { breakfast: '현미수수밥, 롱초코도넛, 된장찌개, 훈제오리냉채무침, 마파두부덮밥', lunch: '', dinner: '' },
   '20251112': { breakfast: '무밥, 바지락미역국, 닭간장조림, 실곤약무침, 배추김치', lunch: '', dinner: '' },
   '20251113': { breakfast: '찰흑미밥, 닭곰탕, 해물잡채, 미트볼케첩조림', lunch: '', dinner: '' },
   '20251114': { breakfast: '현미밥, 돼지고기짜글이, 콩나물무침, 배추김치', lunch: '', dinner: '' },
@@ -44,10 +20,10 @@ const mealSchedule = {
   '20251119': { breakfast: '잡곡밥, 갈비탕, 깻잎무침, 오이김치', lunch: '', dinner: '' },
   '20251120': { breakfast: '백미밥, 순두부찌개, 감자조림, 배추김치', lunch: '', dinner: '' },
   '20251121': { breakfast: '현미밥, 소고기무국, 시금치나물, 배추김치', lunch: '', dinner: '' }
-  // 필요에 따라 더 추가 가능
+  // ... 전체 날짜(주말 제외, 11월말까지) 필요하시면 더 그대로 추가해도 됩니다
 };
 
-// 2025년 학사일정 (완전한 데이터)
+// 학사일정 데이터 (2025년 대표 행사)
 const schoolEvents = [
   { name: '시업식', date: '20250304' },
   { name: '입학식', date: '20250304' },
@@ -73,19 +49,38 @@ const schoolEvents = [
   { name: '종업식', date: '20260107' }
 ];
 
-// 기본 라우트
+function getYmd(offset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function formatDate(ymd) {
+  const year = parseInt(ymd.substring(0, 4));
+  const month = ymd.substring(4, 6);
+  const day = ymd.substring(6, 8);
+  const date = new Date(year, parseInt(month) - 1, parseInt(day));
+  const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
+  const dayName = dayOfWeek[date.getDay()];
+  return `${month}월 ${day}일 (${dayName})`;
+}
+function getYmdWithDay(offset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  const ymd = getYmd(offset);
+  const dayOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
+  return { ymd, dayName: dayOfWeek[d.getDay()] };
+}
 app.get('/', (req, res) => {
   res.send('구산중 챗봇 서버 정상 작동 중');
 });
 
-// 급식 조회 기능
 app.post('/meal', (req, res) => {
   try {
     const params = req.body.action?.params || {};
     let dateParam = (params.date || params.날짜 || '').toLowerCase().trim();
 
     let ymd, dateLabel;
-
     if (dateParam === '내일') {
       ({ ymd } = getYmdWithDay(1));
       dateLabel = '내일';
@@ -105,7 +100,6 @@ app.post('/meal', (req, res) => {
       ({ ymd } = getYmdWithDay(0));
       dateLabel = '오늘';
     }
-
     const meal = mealSchedule[ymd];
     let text;
     if (meal) {
@@ -113,7 +107,6 @@ app.post('/meal', (req, res) => {
     } else {
       text = `${dateLabel}의 급식 정보가 없습니다.`;
     }
-
     res.json({
       version: '2.0',
       template: { outputs:[{ simpleText:{ text } }] }
@@ -126,30 +119,33 @@ app.post('/meal', (req, res) => {
   }
 });
 
-// 행사 조회 기능
 app.post('/event', (req, res) => {
   try {
+    // 두 방식 모두 지원
     const params = req.body.action?.params || {};
-    const eventKeyword = (params.eventKeyword || params.행사명 || '').toLowerCase().trim();
+    let eventKeyword = (params.eventKeyword || params.행사명 || '').trim();
+    if (!eventKeyword && req.body.action?.detailParams) {
+      eventKeyword = req.body.action.detailParams?.eventKeyword?.origin || req.body.action.detailParams?.행사명?.origin || '';
+    }
+    eventKeyword = eventKeyword.trim();
 
     if (!eventKeyword) {
-      const eventList = [...new Set(schoolEvents.map(e=>e.name))].join(', ');
+      const eventList = schoolEvents.map(e=>e.name).join(', ');
       res.json({
         version: '2.0',
         template: { outputs:[{ simpleText:{ text:`다음 중 궁금한 행사를 말씀해주세요.\n${eventList}` } }] }
       });
       return;
     }
-    
-    const matched = schoolEvents.filter(e => e.name.toLowerCase().includes(eventKeyword));
+    // 부분일치도 인정!
+    const matched = schoolEvents.filter(e => e.name.replace(/\s/g,'').includes(eventKeyword.replace(/\s/g,'')));
     let text;
     if (matched.length > 0) {
       text = matched.map(e => `${e.name}: ${formatDate(e.date)}`).join('\n');
     } else {
-      const eventList = [...new Set(schoolEvents.map(e=>e.name))].join(', ');
+      const eventList = schoolEvents.map(e=>e.name).join(', ');
       text = `'${eventKeyword}'는 없습니다.\n\n다음 중 선택하세요:\n${eventList}`;
     }
-
     res.json({
       version: '2.0',
       template: { outputs:[{ simpleText:{ text } }] }
